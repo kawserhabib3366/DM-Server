@@ -768,6 +768,8 @@ class AIAgentAPI:
                 
                 if response.status_code == 200:
                     api_response = response.json() if response.content else {}
+
+                    print(api_response)
                     
                     # Process batch response
                     if isinstance(api_response, list):

@@ -4,4 +4,7 @@ aiohttp==3.10.11
 python-dotenv==1.0.0
 playwright==1.48.0
 elevenlabs==2.8.1
+pydantic ==2.10.6
+pydub=0.25.1
+
 
