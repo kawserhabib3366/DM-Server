@@ -12,7 +12,8 @@ import numpy as np
 import queue
 import threading
 import pyaudio
-
+import requests
+import json
 from dotenv import load_dotenv
 
 
@@ -195,6 +196,19 @@ def find_vac_devices():
 
 
 
+
+
+
+
+
+
+
+
+
+#post_conv(os.getenv("API_KEY"),os.getenv("AGENT_ID"))
+
+
+
 def pre_conn():
 
     AGENT_ID = os.getenv("AGENT_ID")
@@ -331,16 +345,70 @@ You have access to a tool to end the call [end_call function called] .
         conversation_id = conversation.wait_for_session_end()
         print(f"Conversation ID: {conversation_id}")
 
+        
+
+
+
     except Exception as e:
         print(f"Error during conversation: {e}")
     finally:
         audio_interface.stop()
         conversation.end_session()
+        time.sleep(2)
+        def get_conv_details(conv,api_key):
+            response = requests.get(
+              f"https://api.elevenlabs.io/v1/convai/conversations/{conv}",
+              headers={
+                "xi-api-key": f"{api_key}"
+              },
+            )
+
+            return response.json()
+
+
+
+        def post_conv(conv,api_key):    
+
+
+            res=get_conv_details(conv,api_key)
+
+            #print(res)
+
+            import json
+            import os
+
+            file_path = "results.json"
+
+            # Load existing file
+            if os.path.exists(file_path):
+                with open(file_path, "r") as f:
+                    try:
+                        data = json.load(f)
+                    except json.JSONDecodeError:
+                        data = []
+            else:
+                data = []
+
+            # Append new dict
+            data.append(res)
+
+            # Save back
+            with open(file_path, "w") as f:
+                json.dump(data, f, indent=4)
+
+
+        post_conv(conversation_id, os.getenv("API_KEY") )
+
+
         if need_send_sms:
             return True
         else:
             return False
     return False
+
+
+
+
 
 
 # if __name__ == '__main__':
