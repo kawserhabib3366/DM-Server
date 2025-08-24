@@ -5,18 +5,22 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
+# Fix old Debian repo issue and install dependencies
 RUN sed -i 's|deb.debian.org/debian|archive.debian.org/debian|g' /etc/apt/sources.list && \
     sed -i 's|security.debian.org/debian-security|archive.debian.org/debian-security|g' /etc/apt/sources.list && \
     apt-get -o Acquire::Check-Valid-Until=false update && \
     apt-get install -y --no-install-recommends \
         build-essential \
+        default-libmysqlclient-dev \
         portaudio19-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy requirements and install
 COPY requirements.txt .
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
-
+# Copy app code
 COPY . .
 
 EXPOSE 5000
