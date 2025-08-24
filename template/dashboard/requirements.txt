@@ -3,7 +3,6 @@ Flask_Admin==1.6.1
 Flask_Cors==4.0.0
 Flask_Login==0.6.3
 flask_sqlalchemy==3.0.5
-mysql_connector_repackaged==0.3.1
 Requests==2.31.0
 SQLAlchemy==2.0.23
 Werkzeug==2.3.7

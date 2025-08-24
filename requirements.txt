@@ -7,7 +7,6 @@ Flask_Admin==1.6.1
 Flask_Cors==4.0.0
 Flask_Login==0.6.3
 flask_sqlalchemy==3.0.5
-mysql_connector_repackaged==0.3.1
 mysql-connector-python==9.0.0
 numpy==1.24.4
 playwright==1.48.0
