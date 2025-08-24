@@ -5,7 +5,7 @@ python-dotenv==1.0.0
 playwright==1.48.0
 elevenlabs==2.8.1
 pydantic ==2.10.6
-pydub=0.25.1
+pydub==0.25.1
 pyaudio==0.2.14
 numpy==1.24.4
 
