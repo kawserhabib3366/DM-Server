@@ -135,15 +135,14 @@ ON DUPLICATE KEY UPDATE first_name=VALUES(first_name);
 
 
 
--- For SQLite or PostgreSQL:
-ALTER TABLE campaigns ADD COLUMN email_attachment_file VARCHAR(500);
-ALTER TABLE campaigns ADD COLUMN email_attachment_url VARCHAR(500);
-ALTER TABLE campaigns ADD COLUMN email_attachment_type VARCHAR(10);
 
 
+USE campaign_db;
 
-
-
+ALTER TABLE campaigns 
+    ADD COLUMN email_attachment_file VARCHAR(500),
+    ADD COLUMN email_attachment_url VARCHAR(500),
+    ADD COLUMN email_attachment_type VARCHAR(10);
 
 
 
