@@ -1,0 +1,44 @@
+playwright install-deps 
+
+
+
+
+sudo apt update
+sudo apt install alsa-utils
+
+
+echo "options snd-aloop index=1" | sudo tee /etc/modprobe.d/snd-aloop.conf
+sudo modprobe -r snd_aloop
+sudo modprobe snd-aloop
+
+cat /proc/asound/cards
+
+
+
+nano ~/.asoundrc
+pcm.looper {
+    type plug
+    slave {
+        pcm "hw:0,1"
+        rate 48000
+        channels 2
+        format S16_LE
+    }
+}
+
+ctl.looper {
+    type hw
+    card 0
+}
+
+
+
+
+
+groups
+sudo reboot
+admin sudo users audio
+
+
+aplay -l
+arecord -l
