@@ -1,0 +1,335 @@
+[
+    {
+        "agent_id": "agent_4801k12yckhqe6htd8vkwcv65qx3",
+        "conversation_id": "conv_8701k2w417e8emavetwjaxr8t55b",
+        "status": "done",
+        "user_id": null,
+        "transcript": [
+            {
+                "role": "agent",
+                "message": "Hello, this is Laurie, calling on behalf of Good Shepherd Tours. May I please speak with Pastor Bob Johnson?",
+                "tool_calls": [],
+                "tool_results": [],
+                "feedback": null,
+                "llm_override": null,
+                "time_in_call_secs": 0,
+                "conversation_turn_metrics": null,
+                "rag_retrieval_info": null,
+                "llm_usage": null,
+                "interrupted": false,
+                "original_message": null,
+                "source_medium": null
+            },
+            {
+                "role": "user",
+                "message": "No.",
+                "tool_calls": [],
+                "tool_results": [],
+                "feedback": null,
+                "llm_override": null,
+                "time_in_call_secs": 9,
+                "conversation_turn_metrics": null,
+                "rag_retrieval_info": null,
+                "llm_usage": null,
+                "interrupted": false,
+                "original_message": null,
+                "source_medium": "audio"
+            },
+            {
+                "role": "agent",
+                "message": "No problem \u2014 I\u2019ll leave a quick message.\n",
+                "tool_calls": [],
+                "tool_results": [],
+                "feedback": null,
+                "llm_override": null,
+                "time_in_call_secs": 12,
+                "conversation_turn_metrics": {
+                    "metrics": {
+                        "convai_llm_service_ttf_sentence": {
+                            "elapsed_time": 0.4627405909704976
+                        },
+                        "convai_llm_service_ttfb": {
+                            "elapsed_time": 0.3499194019823335
+                        }
+                    }
+                },
+                "rag_retrieval_info": null,
+                "llm_usage": null,
+                "interrupted": false,
+                "original_message": null,
+                "source_medium": null
+            },
+            {
+                "role": "agent",
+                "message": null,
+                "tool_calls": [
+                    {
+                        "type": "system",
+                        "request_id": "end_call_134740ef188547c4ac79525c14673160",
+                        "tool_name": "end_call",
+                        "params_as_json": "{\"reason\": \"The person is not available.\"}",
+                        "tool_has_been_called": true,
+                        "tool_details": null
+                    }
+                ],
+                "tool_results": [],
+                "feedback": null,
+                "llm_override": null,
+                "time_in_call_secs": 12,
+                "conversation_turn_metrics": null,
+                "rag_retrieval_info": null,
+                "llm_usage": null,
+                "interrupted": false,
+                "original_message": null,
+                "source_medium": null
+            },
+            {
+                "role": "agent",
+                "message": null,
+                "tool_calls": [],
+                "tool_results": [
+                    {
+                        "request_id": "end_call_134740ef188547c4ac79525c14673160",
+                        "tool_name": "end_call",
+                        "result_value": "{\"result_type\":\"end_call_success\",\"status\":\"success\",\"reason\":\"The person is not available.\",\"message\":null}",
+                        "is_error": false,
+                        "tool_has_been_called": true,
+                        "tool_latency_secs": 0.500641350983642,
+                        "dynamic_variable_updates": [],
+                        "type": "system",
+                        "result": {
+                            "result_type": "end_call_success",
+                            "status": "success",
+                            "reason": "The person is not available.",
+                            "message": null
+                        }
+                    }
+                ],
+                "feedback": null,
+                "llm_override": null,
+                "time_in_call_secs": 12,
+                "conversation_turn_metrics": null,
+                "rag_retrieval_info": null,
+                "llm_usage": {
+                    "model_usage": {
+                        "gemini-2.0-flash-001": {
+                            "input": {
+                                "tokens": 2223,
+                                "price": 0.0002223
+                            },
+                            "input_cache_read": {
+                                "tokens": 0,
+                                "price": 0.0
+                            },
+                            "input_cache_write": {
+                                "tokens": 0,
+                                "price": 0.0
+                            },
+                            "output_total": {
+                                "tokens": 22,
+                                "price": 8.8e-06
+                            }
+                        }
+                    }
+                },
+                "interrupted": false,
+                "original_message": null,
+                "source_medium": null
+            }
+        ],
+        "metadata": {
+            "start_time_unix_secs": 1755437899,
+            "accepted_time_unix_secs": 1755437899,
+            "call_duration_secs": 15,
+            "cost": 101,
+            "deletion_settings": {
+                "deletion_time_unix_secs": 1818509916,
+                "deleted_logs_at_time_unix_secs": null,
+                "deleted_audio_at_time_unix_secs": null,
+                "deleted_transcript_at_time_unix_secs": null,
+                "delete_transcript_and_pii": true,
+                "delete_audio": true
+            },
+            "feedback": {
+                "overall_score": null,
+                "likes": 0,
+                "dislikes": 0
+            },
+            "authorization_method": "signed_url",
+            "charging": {
+                "dev_discount": false,
+                "is_burst": false,
+                "tier": "creator",
+                "llm_usage": {
+                    "irreversible_generation": {
+                        "model_usage": {
+                            "gemini-2.0-flash-001": {
+                                "input": {
+                                    "tokens": 2223,
+                                    "price": 0.0002223
+                                },
+                                "input_cache_read": {
+                                    "tokens": 0,
+                                    "price": 0.0
+                                },
+                                "input_cache_write": {
+                                    "tokens": 0,
+                                    "price": 0.0
+                                },
+                                "output_total": {
+                                    "tokens": 22,
+                                    "price": 8.8e-06
+                                }
+                            }
+                        }
+                    },
+                    "initiated_generation": {
+                        "model_usage": {
+                            "gemini-2.0-flash-001": {
+                                "input": {
+                                    "tokens": 2223,
+                                    "price": 0.0002223
+                                },
+                                "input_cache_read": {
+                                    "tokens": 0,
+                                    "price": 0.0
+                                },
+                                "input_cache_write": {
+                                    "tokens": 0,
+                                    "price": 0.0
+                                },
+                                "output_total": {
+                                    "tokens": 22,
+                                    "price": 8.8e-06
+                                }
+                            }
+                        }
+                    }
+                },
+                "llm_price": 0.0002311,
+                "llm_charge": 1,
+                "call_charge": 100
+            },
+            "phone_call": null,
+            "batch_call": null,
+            "termination_reason": "end_call tool was called.",
+            "error": null,
+            "main_language": "en",
+            "rag_usage": null,
+            "text_only": false,
+            "features_usage": {
+                "language_detection": {
+                    "enabled": false,
+                    "used": false
+                },
+                "transfer_to_agent": {
+                    "enabled": false,
+                    "used": false
+                },
+                "transfer_to_number": {
+                    "enabled": false,
+                    "used": false
+                },
+                "multivoice": {
+                    "enabled": false,
+                    "used": false
+                },
+                "dtmf_tones": {
+                    "enabled": false,
+                    "used": false
+                },
+                "external_mcp_servers": {
+                    "enabled": false,
+                    "used": false
+                },
+                "pii_zrm_workspace": false,
+                "pii_zrm_agent": false,
+                "tool_dynamic_variable_updates": {
+                    "enabled": false,
+                    "used": false
+                },
+                "is_livekit": false,
+                "voicemail_detection": {
+                    "enabled": true,
+                    "used": false
+                }
+            },
+            "eleven_assistant": {
+                "is_eleven_assistant": false
+            },
+            "initiator_id": null,
+            "conversation_initiation_source": "python_sdk",
+            "conversation_initiation_source_version": "2.8.1",
+            "timezone": null
+        },
+        "analysis": {
+            "evaluation_criteria_results": {},
+            "data_collection_results": {
+                "email": {
+                    "data_collection_id": "email",
+                    "value": null,
+                    "json_schema": {
+                        "type": "string",
+                        "description": "reconfirm user mail address, double check the spelling of the mail.\nAt the rate of mean = @\nExtract the customer\u2019s email address in standard format (user@domain.com)",
+                        "dynamic_variable": "",
+                        "constant_value": ""
+                    },
+                    "rationale": "I am unable to extract the customer's email address from the conversation as it is not mentioned in the transcript."
+                },
+                "phonenumber": {
+                    "data_collection_id": "phonenumber",
+                    "value": null,
+                    "json_schema": {
+                        "type": "number",
+                        "description": "\u201cExtract the customer\u2019s phone number including area code\u201d",
+                        "dynamic_variable": "",
+                        "constant_value": ""
+                    },
+                    "rationale": "I am unable to extract the customer's phone number from the provided conversation, as it is not mentioned in the transcript."
+                }
+            },
+            "call_successful": "success",
+            "transcript_summary": "Laurie from Good Shepherd Tours called to speak with Pastor Bob Johnson, but the user said he was unavailable. Laurie left a message and ended the call.\n",
+            "call_summary_title": "Tour inquiry call ended"
+        },
+        "conversation_initiation_client_data": {
+            "conversation_config_override": {
+                "tts": {
+                    "voice_id": "bIHbv24MWmeRgasZH58o"
+                },
+                "conversation": null,
+                "agent": {
+                    "first_message": "Hello, this is Laurie, calling on behalf of Good Shepherd Tours. May I please speak with Pastor Bob Johnson?",
+                    "language": "en",
+                    "prompt": {
+                        "prompt": " \n# Personality\n\nYou are a warm, knowledgeable representative from Good Shepherd Tours, named Laurie.\nYou are a warm, knowledgeable representative from Good Shepherd Tours, named {agent_name}.\nYou are enthusiastic and respectful, with a passion for faith-enriching travel experiences.\nYou focus on how hosting a tour can inspire pastors' and tour leaders' groups while providing great benefits.\nYou use simple, accessible language and reference Biblical sites to create a connection with the listener. \n\n # Environment\n\n    You are calling pastors to introduce Good Shepherd Tours' hosting program over the phone.\n    Your goal is to connect with Pastor {username}.\n    You are aware that the person you are speaking with may be busy and may have limited time.\n    You have access to information about Good Shepherd Tours, including tour destinations, and the free tour opportunity.\n    You are using a pre-defined script to guide the conversation.\n\n    # Tone\n\n    Your tone is enthusiastic, respectful, and inviting.\n    You speak clearly and concisely, avoiding jargon or overly technical terms.\n    You express genuine enthusiasm for the opportunity to offer a free tour to the Holy Land.\n    You are conversational and engaging, making the listener feel comfortable and valued.\n    You use a warm and inviting tone, similar to a friendly conversation rather than a sales pitch.\n\n    # Goal\n\n    Your primary goal is to share a special invitation with pastors from Good Shepherd Tours, offering them and their spouse a free, faith-enriching tour to destinations like Israel, Turkey, Greece, and Egypt, and to collect their email address and mobile number for follow-up.\n\n    1. **Greeting:** \u201cHello, this is {agent_name}, calling on behalf of Good Shepherd Tours. May I please speak with Pastor ?\u201d\n\n    2. **If the person is NOT available:** \u201cNo problem \u2014 I\u2019ll leave a quick message. \u201d \u2192 [end_call function called].\n\n    3. **If the person IS available:** \u201cWonderful, thank you for taking my call, Pastor {username}. I\u2019m calling with a very special invitation from Good Shepherd Tours. We\u2019d love to invite you and your spouse on a free, faith-enriching tour to destinations like Israel, Turkey, Greece, and Egypt \u2014 walking where the apostles and prophets once walked.\u201d\n\n    4. **Offer Information:** \u201cWe\u2019d like to send you more information by email so you can prayerfully consider this opportunity. Would it be alright if I verify your best email address and mobile number so you don\u2019t miss any details?\u201d\n\n    5. **Email & Phone Verification:** \u201cGreat \u2014 could you please confirm your best email address?\u201d [Collect email and confirm it is correct]. \u201cAnd may I confirm your mobile number as well?\u201d [Collect mobile number and confirm it is correct].\n\n    6. **Closing:** \u201cThank you so much, Pastor {username}. We\u2019ll send your information right away. And please know, if at any point you\u2019d like to speak directly with one of our live tour representatives, we are always available to answer your questions. It\u2019s been a blessing speaking with you today. God bless you.\u201d \u2192 [end_call function called] .\n\n\n\n# Guardrails\n\nDo not make any promises or guarantees that cannot be fulfilled beyond the free tour invitation.\nDo not pressure the pastor to provide their email or phone number. If they are hesitant, reassure them that the information will only be used to send them details about the tour.\nDo not disclose any confidential information about Good Shepherd Tours or its clients.\nDo not engage in any unethical or illegal behavior.\nAlways be respectful of the pastor's time and beliefs.\nIf the pastor expresses no interest in receiving information, politely thank them for their time and end the call.\nIf the pastor asks specific questions you cannot answer, offer to have a live tour representative contact them.\n\n# Tools\n\nYou have access to information about Good Shepherd Tours' tour destinations and the free tour opportunity.\nYou have access to a confirmation tool to verify the accuracy of the email address and mobile number provided.\nYou have access to a tool to end the call [end_call function called] .\n\n\n    ",
+                        "native_mcp_server_ids": null
+                    }
+                }
+            },
+            "custom_llm_extra_body": {},
+            "user_id": null,
+            "source_info": {
+                "source": null,
+                "version": null
+            },
+            "dynamic_variables": {
+                "agent_name": "Laurie",
+                "system__agent_id": "agent_4801k12yckhqe6htd8vkwcv65qx3",
+                "system__timezone": null,
+                "system__caller_id": null,
+                "system__time_utc": "2025-08-17T13:38:34.188180+00:00",
+                "system__call_sid": null,
+                "recipientlast_name": "Bob Johnson",
+                "system__time": "Sunday, 13:38 17 August 2025",
+                "system__conversation_id": "conv_8701k2w417e8emavetwjaxr8t55b",
+                "system__call_duration_secs": 14,
+                "system__called_number": null,
+                "system__current_agent_id": "agent_4801k12yckhqe6htd8vkwcv65qx3"
+            }
+        },
+        "has_audio": true,
+        "has_user_audio": true,
+        "has_response_audio": true
+    }
+]

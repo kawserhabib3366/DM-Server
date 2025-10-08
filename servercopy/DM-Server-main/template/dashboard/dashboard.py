@@ -269,6 +269,7 @@ from flask import Response, stream_with_context
 
 
 # Add this new route for streaming campaign launch
+# Fixed launch_campaign_with_progress function
 @app.route('/api/launch-campaign-with-progress', methods=['POST'])
 @login_required
 def launch_campaign_with_progress():
@@ -281,6 +282,11 @@ def launch_campaign_with_progress():
         return jsonify({'success': False, 'error': 'Campaign not found'}), 404
     
     def generate_progress():
+        def yield_channel_progress(channel, progress_data):
+            """Helper function to yield progress updates within the generator"""
+            nonlocal generate_progress
+            yield f"data: {json.dumps({'type': 'channel_progress', 'channel': channel, 'progress': progress_data})}\n\n"
+        
         try:
             # Step 1: Initialize
             yield f"data: {json.dumps({'type': 'step', 'message': 'Initializing campaign launch...'})}\n\n"
@@ -316,10 +322,10 @@ def launch_campaign_with_progress():
             seen_phones = set()
             
             for client in clients:
-                if client.get('email') and client['email'] in seen_emails:
-                    continue
-                if client.get('phone') and client['phone'] in seen_phones:
-                    continue
+                #if client.get('email') and client['email'] in seen_emails:
+                #    continue
+                #if client.get('phone') and client['phone'] in seen_phones:
+                #    continue
                     
                 unique_clients.append(client)
                 
@@ -352,14 +358,18 @@ def launch_campaign_with_progress():
                 elif campaign.email_attachment_type == 'url' and campaign.email_attachment_url:
                     attachment = campaign.email_attachment_url
                 
-                email_results = ai_agent.send_email_with_progress(
+                # Create a progress callback that works with the generator
+                def email_progress_callback(progress_data):
+                    # This won't work directly - we need a different approach
+                    pass
+                
+                email_results = ai_agent.send_email_batch(
                     unique_clients, 
                     campaign.email_subject, 
                     campaign.email_body,
                     campaign_id,
                     attachment,
-                    campaign.email_attachment_type,
-                    progress_callback=lambda progress: yield_progress('email', progress)
+                    campaign.email_attachment_type
                 )
                 
                 results['actions']['email'] = email_results
@@ -369,11 +379,10 @@ def launch_campaign_with_progress():
             if campaign.sms_message:
                 yield f"data: {json.dumps({'type': 'channel_start', 'channel': 'sms', 'progress': {'total': unique_client_count}})}\n\n"
                 
-                sms_results = ai_agent.send_sms_with_progress(
+                sms_results = ai_agent.send_sms_batch(
                     unique_clients, 
                     campaign.sms_message,
-                    campaign_id,
-                    progress_callback=lambda progress: yield_progress('sms', progress)
+                    campaign_id
                 )
                 
                 results['actions']['sms'] = sms_results
@@ -383,11 +392,10 @@ def launch_campaign_with_progress():
             if campaign.voice_file_path:
                 yield f"data: {json.dumps({'type': 'channel_start', 'channel': 'voice', 'progress': {'total': unique_client_count}})}\n\n"
                 
-                voice_results = ai_agent.leave_voice_message_with_progress(
+                voice_results = ai_agent.leave_voice_message_batch(
                     unique_clients, 
                     campaign.voice_file_path,
-                    campaign_id,
-                    progress_callback=lambda progress: yield_progress('voice', progress)
+                    campaign_id
                 )
                 
                 results['actions']['voice'] = voice_results
@@ -395,13 +403,13 @@ def launch_campaign_with_progress():
 
             # Step 7: Execute AI Agent Calls
             if campaign.ai_agent_profile:
+                print('ai call agent... com')
                 yield f"data: {json.dumps({'type': 'channel_start', 'channel': 'ai', 'progress': {'total': unique_client_count}})}\n\n"
                 
-                ai_call_results = ai_agent.interactive_call_with_progress(
+                ai_call_results = ai_agent.interactive_call_batch(
                     unique_clients, 
                     campaign.ai_agent_profile,
-                    campaign_id,
-                    progress_callback=lambda progress: yield_progress('ai', progress)
+                    campaign_id
                 )
                 
                 results['actions']['ai_calls'] = ai_call_results
@@ -421,30 +429,27 @@ def launch_campaign_with_progress():
             print(f"Error in campaign launch: {str(e)}")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
     
-    def yield_progress(channel, progress_data):
-        """Helper function to yield progress updates"""
-        return f"data: {json.dumps({'type': 'channel_progress', 'channel': channel, 'progress': progress_data})}\n\n"
-    
     return Response(
         stream_with_context(generate_progress()),
-        content_type='text/plain',
+        content_type='text/event-stream',  # Changed from text/plain
         headers={
             'Cache-Control': 'no-cache',
-            'X-Accel-Buffering': 'no'  # Disable nginx buffering
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive'
         }
     )
 
 # Enhanced AI Agent API with Progress Callbacks
+# Simplified AIAgentAPI without complex progress callbacks
 class AIAgentAPI:
-    """Enhanced interface with progress tracking capabilities"""
+    """Simplified interface for campaign execution"""
     
     def __init__(self):
         self.timeout = 30
     
-    def send_email_with_progress(self, client_list: List[Dict], subject: str, body: str, 
-                                campaign_id: int, attachment: str = None, attachment_type: str = None,
-                                progress_callback=None) -> Dict:
-        """Send emails with progress tracking"""
+    def send_email_batch(self, client_list: List[Dict], subject: str, body: str, 
+                        campaign_id: int, attachment: str = None, attachment_type: str = None) -> Dict:
+        """Send emails in batch"""
         try:
             results = {
                 'success': 0,
@@ -452,7 +457,7 @@ class AIAgentAPI:
                 'details': []
             }
             
-            for i, client in enumerate(client_list):
+            for client in client_list:
                 client_email = client.get('email')
                 client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}".strip()
                 
@@ -470,15 +475,7 @@ class AIAgentAPI:
                 if not client_email:
                     email_log.status = 'failed'
                     email_log.error_message = 'No email address'
-                    db.session.add(email_log)
                     results['failed'] += 1
-                    results['details'].append({
-                        'client_id': client.get('id'),
-                        'client_name': client_name,
-                        'email': 'N/A',
-                        'status': 'failed',
-                        'error': 'No email address'
-                    })
                 else:
                     try:
                         email_data = {
@@ -500,48 +497,25 @@ class AIAgentAPI:
                         if response.status_code == 200:
                             email_log.status = 'sent'
                             results['success'] += 1
-                            results['details'].append({
-                                'client_id': client.get('id'),
-                                'client_name': client_name,
-                                'email': client_email,
-                                'status': 'sent'
-                            })
                         else:
                             email_log.status = 'failed'
                             email_log.error_message = f'HTTP {response.status_code}: {response.text}'
                             results['failed'] += 1
-                            results['details'].append({
-                                'client_id': client.get('id'),
-                                'client_name': client_name,
-                                'email': client_email,
-                                'status': 'failed',
-                                'error': email_log.error_message
-                            })
                     
                     except requests.exceptions.RequestException as e:
                         email_log.status = 'failed'
                         email_log.error_message = f'Request error: {str(e)}'
                         results['failed'] += 1
-                        results['details'].append({
-                            'client_id': client.get('id'),
-                            'client_name': client_name,
-                            'email': client_email,
-                            'status': 'failed',
-                            'error': email_log.error_message
-                        })
                 
                 db.session.add(email_log)
                 
-                # Send progress update every few emails or on completion
-                if progress_callback and (i % 5 == 0 or i == len(client_list) - 1):
-                    progress_data = {
-                        'success': results['success'],
-                        'failed': results['failed'],
-                        'processed': i + 1,
-                        'total': len(client_list),
-                        'latest_results': results['details'][-5:] if len(results['details']) > 5 else results['details']
-                    }
-                    progress_callback(progress_data)
+                results['details'].append({
+                    'client_id': client.get('id'),
+                    'client_name': client_name,
+                    'email': client_email or 'N/A',
+                    'status': email_log.status,
+                    'error': email_log.error_message if email_log.status == 'failed' else None
+                })
             
             db.session.commit()
             return results
@@ -555,10 +529,8 @@ class AIAgentAPI:
                 'details': []
             }
     
-
-    def send_sms_with_progress(self, client_list: List[Dict], message: str, campaign_id: int,
-                              progress_callback=None) -> Dict:
-        """Send SMS with progress tracking"""
+    def send_sms_batch(self, client_list: List[Dict], message: str, campaign_id: int) -> Dict:
+        """Send SMS in batch"""
         try:
             results = {
                 'success': 0,
@@ -586,7 +558,6 @@ class AIAgentAPI:
                 if not client_phone:
                     sms_log.status = 'failed'
                     sms_log.error_message = 'No phone number'
-                    db.session.add(sms_log)
                     results['failed'] += 1
                     results['details'].append({
                         'client_id': client_id,
@@ -595,6 +566,7 @@ class AIAgentAPI:
                         'status': 'failed',
                         'error': 'No phone number'
                     })
+                    db.session.add(sms_log)
                     continue
                 
                 sms_task = {
@@ -607,132 +579,69 @@ class AIAgentAPI:
                 sms_tasks.append(sms_task)
                 client_logs[client_phone] = {'log': sms_log, 'client': client}
             
-            if not sms_tasks:
-                db.session.commit()
-                return results
-            
-            # Send initial progress
-            if progress_callback:
-                progress_callback({
-                    'success': 0,
-                    'failed': results['failed'],
-                    'processed': results['failed'],
-                    'total': len(client_list)
-                })
-            
-            try:
-                response = requests.post(
-                    VOICE_CALL_ENDPOINT,
-                    json=sms_tasks,
-                    timeout=self.timeout * 2,
-                    headers={'Content-Type': 'application/json'}
-                )
-                
-                if response.status_code == 200:
-                    api_response = response.json() if response.content else {}
+            if sms_tasks:
+                try:
+                    response = requests.post(
+                        VOICE_CALL_ENDPOINT,
+                        json=sms_tasks,
+                        timeout=self.timeout * 2,
+                        headers={'Content-Type': 'application/json'}
+                    )
                     
-                    if isinstance(api_response, list):
-                        for i, task_result in enumerate(api_response):
-                            if i < len(sms_tasks):
-                                phone = sms_tasks[i]['phone']
-                                if phone in client_logs:
-                                    log_data = client_logs[phone]
-                                    sms_log = log_data['log']
-                                    client = log_data['client']
-                                    
-                                    sms_log.api_response = task_result
-                                    
-                                    if task_result.get('success', False):
-                                        sms_log.status = 'sent'
-                                        results['success'] += 1
+                    if response.status_code == 200:
+                        api_response = response.json() if response.content else {}
+                        
+                        if isinstance(api_response, list):
+                            for i, task_result in enumerate(api_response):
+                                if i < len(sms_tasks):
+                                    phone = sms_tasks[i]['phone']
+                                    if phone in client_logs:
+                                        log_data = client_logs[phone]
+                                        sms_log = log_data['log']
+                                        client = log_data['client']
+                                        
+                                        sms_log.api_response = task_result
+                                        
+                                        if task_result.get('success', False):
+                                            sms_log.status = 'sent'
+                                            results['success'] += 1
+                                            status = 'sent'
+                                            error = None
+                                        else:
+                                            sms_log.status = 'failed'
+                                            sms_log.error_message = task_result.get('error', 'Unknown error')
+                                            results['failed'] += 1
+                                            status = 'failed'
+                                            error = sms_log.error_message
+                                        
                                         results['details'].append({
                                             'client_id': client.get('id'),
-                                            'client_name': client.get('first_name', '') + ' ' + client.get('last_name', ''),
+                                            'client_name': client_name,
                                             'phone': phone,
-                                            'status': 'sent'
+                                            'status': status,
+                                            'error': error
                                         })
-                                    else:
-                                        sms_log.status = 'failed'
-                                        sms_log.error_message = task_result.get('error', 'Unknown error')
-                                        results['failed'] += 1
-                                        results['details'].append({
-                                            'client_id': client.get('id'),
-                                            'client_name': client.get('first_name', '') + ' ' + client.get('last_name', ''),
-                                            'phone': phone,
-                                            'status': 'failed',
-                                            'error': sms_log.error_message
-                                        })
-                                    
-                                    # Send progress update for every 10 processed or on completion
-                                    if progress_callback and (i % 10 == 0 or i == len(api_response) - 1):
-                                        progress_callback({
-                                            'success': results['success'],
-                                            'failed': results['failed'],
-                                            'processed': results['success'] + results['failed'],
-                                            'total': len(client_list),
-                                            'latest_results': results['details'][-5:]
-                                        })
+                        
+                        for phone, log_data in client_logs.items():
+                            db.session.add(log_data['log'])
                     else:
+                        # Handle API error
+                        error_msg = f'HTTP {response.status_code}: {response.text}'
                         for phone, log_data in client_logs.items():
                             sms_log = log_data['log']
-                            client = log_data['client']
-                            
-                            sms_log.api_response = api_response
-                            sms_log.status = 'sent'
-                            results['success'] += 1
-                            results['details'].append({
-                                'client_id': client.get('id'),
-                                'client_name': client.get('first_name', '') + ' ' + client.get('last_name', ''),
-                                'phone': phone,
-                                'status': 'sent'
-                            })
-                else:
-                    error_msg = f'HTTP {response.status_code}: {response.text}'
+                            sms_log.status = 'failed'
+                            sms_log.error_message = error_msg
+                            results['failed'] += 1
+                            db.session.add(sms_log)
+                
+                except requests.exceptions.RequestException as e:
+                    error_msg = f'Request error: {str(e)}'
                     for phone, log_data in client_logs.items():
                         sms_log = log_data['log']
-                        client = log_data['client']
-                        
                         sms_log.status = 'failed'
                         sms_log.error_message = error_msg
                         results['failed'] += 1
-                        results['details'].append({
-                            'client_id': client.get('id'),
-                            'client_name': client.get('first_name', '') + ' ' + client.get('last_name', ''),
-                            'phone': phone,
-                            'status': 'failed',
-                            'error': error_msg
-                        })
-                
-                for phone, log_data in client_logs.items():
-                    db.session.add(log_data['log'])
-                
-                # Final progress update
-                if progress_callback:
-                    progress_callback({
-                        'success': results['success'],
-                        'failed': results['failed'],
-                        'processed': len(client_list),
-                        'total': len(client_list),
-                        'latest_results': results['details'][-10:]
-                    })
-                
-            except requests.exceptions.RequestException as e:
-                error_msg = f'Request error: {str(e)}'
-                for phone, log_data in client_logs.items():
-                    sms_log = log_data['log']
-                    client = log_data['client']
-                    
-                    sms_log.status = 'failed'
-                    sms_log.error_message = error_msg
-                    results['failed'] += 1
-                    results['details'].append({
-                        'client_id': client.get('id'),
-                        'client_name': client.get('first_name', '') + ' ' + client.get('last_name', ''),
-                        'phone': phone,
-                        'status': 'failed',
-                        'error': error_msg
-                    })
-                    db.session.add(sms_log)
+                        db.session.add(sms_log)
             
             db.session.commit()
             return results
@@ -746,11 +655,9 @@ class AIAgentAPI:
                 'details': []
             }
     
-
-
-    def leave_voice_message_with_progress(self, client_list: List[Dict], audio_file_path: str, 
-                                         campaign_id: int, progress_callback=None) -> Dict:
-        """Leave voice messages with progress tracking"""
+    def leave_voice_message_batch(self, client_list: List[Dict], audio_file_path: str, 
+                                 campaign_id: int) -> Dict:
+        """Leave voice messages in batch"""
         try:
             results = {
                 'success': 0,
@@ -777,7 +684,6 @@ class AIAgentAPI:
                 if not client_phone:
                     call_log.status = 'failed'
                     call_log.error_message = 'No phone number'
-                    db.session.add(call_log)
                     results['failed'] += 1
                     results['details'].append({
                         'client_id': client_id,
@@ -786,6 +692,7 @@ class AIAgentAPI:
                         'status': 'failed',
                         'error': 'No phone number'
                     })
+                    db.session.add(call_log)
                     continue
                 
                 voice_task = {
@@ -798,135 +705,72 @@ class AIAgentAPI:
                 voice_tasks.append(voice_task)
                 client_logs[client_phone] = {'log': call_log, 'client': client}
             
-            if not voice_tasks:
-                db.session.commit()
-                return results
-            
-            # Send initial progress
-            if progress_callback:
-                progress_callback({
-                    'success': 0,
-                    'failed': results['failed'],
-                    'processed': results['failed'],
-                    'total': len(client_list)
-                })
-            
-            try:
-                response = requests.post(
-                    VOICE_CALL_ENDPOINT,
-                    json=voice_tasks,
-                    timeout=self.timeout * 3,
-                    headers={'Content-Type': 'application/json'}
-                )
-                
-                if response.status_code == 200:
-                    api_response = response.json() if response.content else {}
+            if voice_tasks:
+                try:
+                    response = requests.post(
+                        VOICE_CALL_ENDPOINT,
+                        json=voice_tasks,
+                        timeout=self.timeout * 3,
+                        headers={'Content-Type': 'application/json'}
+                    )
                     
-                    if isinstance(api_response, list):
-                        for i, task_result in enumerate(api_response):
-                            if i < len(voice_tasks):
-                                phone = voice_tasks[i]['phone']
-                                if phone in client_logs:
-                                    log_data = client_logs[phone]
-                                    call_log = log_data['log']
-                                    client = log_data['client']
-                                    
-                                    call_log.api_response = task_result
-                                    
-                                    if task_result.get('duration'):
-                                        call_log.duration = task_result['duration']
-                                    
-                                    if task_result.get('success', False):
-                                        call_log.status = 'connected'
-                                        results['success'] += 1
+                    if response.status_code == 200:
+                        api_response = response.json() if response.content else {}
+                        
+                        if isinstance(api_response, list):
+                            for i, task_result in enumerate(api_response):
+                                if i < len(voice_tasks):
+                                    phone = voice_tasks[i]['phone']
+                                    if phone in client_logs:
+                                        log_data = client_logs[phone]
+                                        call_log = log_data['log']
+                                        client = log_data['client']
+                                        
+                                        call_log.api_response = task_result
+                                        
+                                        if task_result.get('duration'):
+                                            call_log.duration = task_result['duration']
+                                        
+                                        if task_result.get('success', False):
+                                            call_log.status = 'connected'
+                                            results['success'] += 1
+                                            status = 'connected'
+                                            error = None
+                                        else:
+                                            call_log.status = 'failed'
+                                            call_log.error_message = task_result.get('error', 'Unknown error')
+                                            results['failed'] += 1
+                                            status = 'failed'
+                                            error = call_log.error_message
+                                        
                                         results['details'].append({
                                             'client_id': client.get('id'),
                                             'client_name': client_name,
                                             'phone': phone,
-                                            'status': 'connected'
+                                            'status': status,
+                                            'error': error
                                         })
-                                    else:
-                                        call_log.status = 'failed'
-                                        call_log.error_message = task_result.get('error', 'Unknown error')
-                                        results['failed'] += 1
-                                        results['details'].append({
-                                            'client_id': client.get('id'),
-                                            'client_name': client_name,
-                                            'phone': phone,
-                                            'status': 'failed',
-                                            'error': call_log.error_message
-                                        })
-                                    
-                                    # Send progress update every 5 calls or on completion
-                                    if progress_callback and (i % 5 == 0 or i == len(api_response) - 1):
-                                        progress_callback({
-                                            'success': results['success'],
-                                            'failed': results['failed'],
-                                            'processed': results['success'] + results['failed'],
-                                            'total': len(client_list),
-                                            'latest_results': results['details'][-3:]
-                                        })
+                        
+                        for phone, log_data in client_logs.items():
+                            db.session.add(log_data['log'])
                     else:
+                        # Handle API error
+                        error_msg = f'HTTP {response.status_code}: {response.text}'
                         for phone, log_data in client_logs.items():
                             call_log = log_data['log']
-                            client = log_data['client']
-                            
-                            call_log.api_response = api_response
-                            call_log.status = 'connected'
-                            results['success'] += 1
-                            results['details'].append({
-                                'client_id': client.get('id'),
-                                'client_name': client_name,
-                                'phone': phone,
-                                'status': 'connected'
-                            })
-                else:
-                    error_msg = f'HTTP {response.status_code}: {response.text}'
+                            call_log.status = 'failed'
+                            call_log.error_message = error_msg
+                            results['failed'] += 1
+                            db.session.add(call_log)
+                
+                except requests.exceptions.RequestException as e:
+                    error_msg = f'Request error: {str(e)}'
                     for phone, log_data in client_logs.items():
                         call_log = log_data['log']
-                        client = log_data['client']
-                        
                         call_log.status = 'failed'
                         call_log.error_message = error_msg
                         results['failed'] += 1
-                        results['details'].append({
-                            'client_id': client.get('id'),
-                            'client_name': client_name,
-                            'phone': phone,
-                            'status': 'failed',
-                            'error': error_msg
-                        })
-                
-                for phone, log_data in client_logs.items():
-                    db.session.add(log_data['log'])
-                
-                # Final progress update
-                if progress_callback:
-                    progress_callback({
-                        'success': results['success'],
-                        'failed': results['failed'],
-                        'processed': len(client_list),
-                        'total': len(client_list),
-                        'latest_results': results['details'][-5:]
-                    })
-                
-            except requests.exceptions.RequestException as e:
-                error_msg = f'Request error: {str(e)}'
-                for phone, log_data in client_logs.items():
-                    call_log = log_data['log']
-                    client = log_data['client']
-                    
-                    call_log.status = 'failed'
-                    call_log.error_message = error_msg
-                    results['failed'] += 1
-                    results['details'].append({
-                        'client_id': client.get('id'),
-                        'client_name': client_name,
-                        'phone': phone,
-                        'status': 'failed',
-                        'error': error_msg
-                    })
-                    db.session.add(call_log)
+                        db.session.add(call_log)
             
             db.session.commit()
             return results
@@ -940,9 +784,9 @@ class AIAgentAPI:
                 'details': []
             }
     
-    def interactive_call_with_progress(self, client_list: List[Dict], agent_profile: Dict, 
-                                      campaign_id: int, progress_callback=None) -> Dict:
-        """Make AI agent calls with progress tracking"""
+    def interactive_call_batch(self, client_list: List[Dict], agent_profile: Dict, 
+                              campaign_id: int) -> Dict:
+        """Make AI agent calls in batch"""
         try:
             results = {
                 'success': 0,
@@ -957,7 +801,8 @@ class AIAgentAPI:
             
             for client in client_list:
                 client_phone = client.get('phone')
-                client_name = f"{client.get('first_name', '')} {client.get('last_name', '')}".strip()
+                client_name = (f"{client.get('first_name', '')} {client.get('last_name', '')}".strip() or client.get('organization_name', ''))
+
                 client_id = client.get('id')
                 
                 call_log = CallLog(
@@ -972,7 +817,6 @@ class AIAgentAPI:
                 if not client_phone:
                     call_log.status = 'failed'
                     call_log.error_message = 'No phone number'
-                    db.session.add(call_log)
                     results['failed'] += 1
                     results['details'].append({
                         'client_id': client_id,
@@ -981,161 +825,100 @@ class AIAgentAPI:
                         'status': 'failed',
                         'error': 'No phone number'
                     })
+                    db.session.add(call_log)
                     continue
                 
                 ai_task = {
                     'type': 'ai_call',
                     'phone': client_phone,
-                    'username': client_name or f"Client {client_id or 'Unknown'}",
+                    'username': client_name ,
                     'ai_profile': agent_profile
                 }
                 
                 ai_tasks.append(ai_task)
                 client_logs[client_phone] = {'log': call_log, 'client': client}
             
-            if not ai_tasks:
-                db.session.commit()
-                return results
-            
-            # Send initial progress
-            if progress_callback:
-                progress_callback({
-                    'success': 0,
-                    'failed': results['failed'],
-                    'processed': results['failed'],
-                    'total': len(client_list)
-                })
-            
-            try:
-                response = requests.post(
-                    VOICE_CALL_ENDPOINT,
-                    json=ai_tasks,
-                    timeout=self.timeout * 4,
-                    headers={'Content-Type': 'application/json'}
-                )
-                
-                if response.status_code == 200:
-                    api_response = response.json() if response.content else {}
+            if ai_tasks:
+                #print('aicall taks is ..... fine',ai_tasks[0])
+                try:
+                    #print('starting aicall ')
+                    import json
+                    print(json.dumps(ai_tasks, indent=2))
+
+                    response = requests.post(
+                        VOICE_CALL_ENDPOINT,
+                        json=ai_tasks,
+                        timeout=None,
+                        headers={'Content-Type': 'application/json'}
+                    )
+                    #print('ress ',response.status_code,type(ai_tasks))
                     
-                    if isinstance(api_response, list):
-                        for i, task_result in enumerate(api_response):
-                            if i < len(ai_tasks):
-                                phone = ai_tasks[i]['phone']
-                                if phone in client_logs:
-                                    log_data = client_logs[phone]
-                                    call_log = log_data['log']
-                                    client = log_data['client']
-                                    
-                                    call_log.api_response = task_result
-                                    
-                                    # Extract conversation data from API response
-                                    if task_result.get('conversation'):
-                                        call_log.conversation = task_result['conversation']
-                                    
-                                    # Extract duration if available
-                                    if task_result.get('duration'):
-                                        call_log.duration = task_result['duration']
-                                    
-                                    if task_result.get('success', False):
-                                        call_log.status = 'connected'
-                                        results['success'] += 1
+                    if response.status_code == 200:
+                        api_response = response.json() if response.content else {}
+                        
+                        if isinstance(api_response, list):
+                            for i, task_result in enumerate(api_response):
+                                if i < len(ai_tasks):
+                                    phone = ai_tasks[i]['phone']
+                                    if phone in client_logs:
+                                        log_data = client_logs[phone]
+                                        call_log = log_data['log']
+                                        client = log_data['client']
+                                        
+                                        call_log.api_response = task_result
+                                        
+                                        # Extract conversation data from API response
+                                        if task_result.get('conversation'):
+                                            call_log.conversation = task_result['conversation']
+                                        
+                                        # Extract duration if available
+                                        if task_result.get('duration'):
+                                            call_log.duration = task_result['duration']
+                                        
+                                        if task_result.get('success', False):
+                                            call_log.status = 'connected'
+                                            results['success'] += 1
+                                            status = 'connected'
+                                            error = None
+                                        else:
+                                            call_log.status = 'failed'
+                                            call_log.error_message = task_result.get('error', 'Unknown error')
+                                            results['failed'] += 1
+                                            status = 'failed'
+                                            error = call_log.error_message
+                                        
                                         results['details'].append({
                                             'client_id': client.get('id'),
                                             'client_name': client_name,
                                             'phone': phone,
                                             'agent': agent_name,
-                                            'status': 'connected'
+                                            'status': status,
+                                            'error': error
                                         })
-                                    else:
-                                        call_log.status = 'failed'
-                                        call_log.error_message = task_result.get('error', 'Unknown error')
-                                        results['failed'] += 1
-                                        results['details'].append({
-                                            'client_id': client.get('id'),
-                                            'client_name': client_name,
-                                            'phone': phone,
-                                            'agent': agent_name,
-                                            'status': 'failed',
-                                            'error': call_log.error_message
-                                        })
-                                    
-                                    # Send progress update every 3 calls or on completion
-                                    if progress_callback and (i % 3 == 0 or i == len(api_response) - 1):
-                                        progress_callback({
-                                            'success': results['success'],
-                                            'failed': results['failed'],
-                                            'processed': results['success'] + results['failed'],
-                                            'total': len(client_list),
-                                            'latest_results': results['details'][-3:]
-                                        })
+                        
+                        for phone, log_data in client_logs.items():
+                            db.session.add(log_data['log'])
                     else:
+                        # Handle API error
+                        error_msg = f'HTTP {response.status_code}: {response.text}'
                         for phone, log_data in client_logs.items():
                             call_log = log_data['log']
-                            client = log_data['client']
-                            
-                            call_log.api_response = api_response
-                            call_log.status = 'connected'
-                            
-                            if api_response.get('conversation'):
-                                call_log.conversation = api_response['conversation']
-                            
-                            results['success'] += 1
-                            results['details'].append({
-                                'client_id': client.get('id'),
-                                'client_name': client_name,
-                                'phone': phone,
-                                'agent': agent_name,
-                                'status': 'connected'
-                            })
-                else:
-                    error_msg = f'HTTP {response.status_code}: {response.text}'
+                            call_log.status = 'failed'
+                            call_log.error_message = error_msg
+                            results['failed'] += 1
+                            db.session.add(call_log)
+                
+                except requests.exceptions.RequestException as e:
+                    print('eroror si ',e)
+                    error_msg = f'Request error: {str(e)}'
                     for phone, log_data in client_logs.items():
                         call_log = log_data['log']
-                        client = log_data['client']
-                        
                         call_log.status = 'failed'
                         call_log.error_message = error_msg
                         results['failed'] += 1
-                        results['details'].append({
-                            'client_id': client.get('id'),
-                            'client_name': client_name,
-                            'phone': phone,
-                            'agent': agent_name,
-                            'status': 'failed',
-                            'error': error_msg
-                        })
-                
-                for phone, log_data in client_logs.items():
-                    db.session.add(log_data['log'])
-                
-                # Final progress update
-                if progress_callback:
-                    progress_callback({
-                        'success': results['success'],
-                        'failed': results['failed'],
-                        'processed': len(client_list),
-                        'total': len(client_list),
-                        'latest_results': results['details'][-5:]
-                    })
-                
-            except requests.exceptions.RequestException as e:
-                error_msg = f'Request error: {str(e)}'
-                for phone, log_data in client_logs.items():
-                    call_log = log_data['log']
-                    client = log_data['client']
-                    
-                    call_log.status = 'failed'
-                    call_log.error_message = error_msg
-                    results['failed'] += 1
-                    results['details'].append({
-                        'client_id': client.get('id'),
-                        'client_name': client_name,
-                        'phone': phone,
-                        'agent': agent_name,
-                        'status': 'failed',
-                        'error': error_msg
-                    })
-                    db.session.add(call_log)
+                        db.session.add(call_log)
+                except Exception as e :
+                    print('eroror si ',e)
             
             db.session.commit()
             return results
@@ -1155,121 +938,144 @@ ai_agent = AIAgentAPI()
 
 
 
+
 # ============================================================================
 # MySQL Database Connection (unchanged)
 # ============================================================================
 
+# Improved MySQL Connection Class with better error handling
 class MySQLConnection:
-    """Handle MySQL database connections for client data"""
+    """Handle MySQL database connections for client data with improved error handling"""
     
     def __init__(self):
         self.config = {
             'host': os.getenv('MYSQL_HOST', 'localhost'),
             'database': os.getenv('MYSQL_DATABASE', 'clients_db'),
             'user': os.getenv('MYSQL_USER', 'root'),
-            'password': os.getenv('MYSQL_PASSWORD', '')
+            'password': os.getenv('MYSQL_PASSWORD', ''),
+            'charset': 'utf8mb4',
+            'collation': 'utf8mb4_unicode_ci',
+            'autocommit': True,
+            'connection_timeout': 10
         }
     
     def get_connection(self):
+        """Get database connection with proper error handling"""
         try:
-            return mysql.connector.connect(**self.config)
+            connection = mysql.connector.connect(**self.config)
+            if connection.is_connected():
+                return connection
         except Error as e:
             print(f"Error connecting to MySQL: {e}")
-            return None
+        return None
+    
+    def execute_query(self, query, params=None, fetch_results=True):
+        """Execute query with proper connection management"""
+        connection = None
+        cursor = None
+        try:
+            connection = self.get_connection()
+            if not connection:
+                return []
+            
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(query, params or ())
+            
+            if fetch_results:
+                results = cursor.fetchall()
+                return results
+            else:
+                connection.commit()
+                return cursor.rowcount
+                
+        except Error as e:
+            print(f"Error executing query: {e}")
+            if connection:
+                connection.rollback()
+            return []
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
     
     def get_client_groups(self):
-        conn = self.get_connection()
-        if not conn:
-            return []
+        """Get all client groups with improved error handling"""
+        query = """
+            SELECT DISTINCT 
+                group_id, 
+                group_name, 
+                COUNT(*) as client_count 
+            FROM clients 
+            WHERE group_id IS NOT NULL
+            GROUP BY group_id, group_name
+            ORDER BY group_name
+        """
         
-        try:
-            cursor = conn.cursor(dictionary=True)
-            query = """
-                SELECT DISTINCT 
-                    group_id, 
-                    group_name, 
-                    COUNT(*) as client_count 
-                FROM clients 
-                GROUP BY group_id, group_name
-                ORDER BY group_name
-            """
-            cursor.execute(query)
-            groups = cursor.fetchall()
-            return groups
-        except Error as e:
-            print(f"Error fetching groups: {e}")
-            return []
-        finally:
-            if conn.is_connected():
-                cursor.close()
-                conn.close()
+        results = self.execute_query(query)
+        return results if results else []
     
     def get_clients_by_group(self, group_id: int):
-        conn = self.get_connection()
-        if not conn:
-            return []
+        """Get clients by group ID with improved error handling"""
+        query = """
+            SELECT 
+                id, 
+                first_name, 
+                last_name, 
+                organization_name,
+                email, 
+                phone, 
+                group_id 
+            FROM clients 
+            WHERE group_id = %s
+            ORDER BY last_name, first_name
+        """
         
-        try:
-            cursor = conn.cursor(dictionary=True)
-            query = """
-                SELECT 
-                    id, 
-                    first_name, 
-                    last_name, 
-                    email, 
-                    phone, 
-                    group_id 
-                FROM clients 
-                WHERE group_id = %s
-            """
-            cursor.execute(query, (group_id,))
-            clients = cursor.fetchall()
-            return clients
-        except Error as e:
-            print(f"Error fetching clients: {e}")
-            return []
-        finally:
-            if conn.is_connected():
-                cursor.close()
-                conn.close()
-
-
-    # Add this method to the MySQLConnection class in dashboard.py
-
+        results = self.execute_query(query, (group_id,))
+        return results if results else []
+    
     def get_clients_by_multiple_groups(self, group_ids: List[int]):
-        """Get clients from multiple groups"""
-        conn = self.get_connection()
-        if not conn:
+        """Get clients from multiple groups with improved error handling"""
+        if not group_ids:
             return []
         
-        try:
-            cursor = conn.cursor(dictionary=True)
-            # Create placeholders for the IN clause
-            placeholders = ','.join(['%s'] * len(group_ids))
-            query = f"""
-                SELECT 
-                    id, 
-                    first_name, 
-                    last_name, 
-                    email, 
-                    phone, 
-                    group_id 
-                FROM clients 
-                WHERE group_id IN ({placeholders})
-            """
-            cursor.execute(query, group_ids)
-            clients = cursor.fetchall()
-            return clients
-        except Error as e:
-            print(f"Error fetching clients: {e}")
-            return []
-        finally:
-            if conn.is_connected():
+        # Create placeholders for the IN clause
+        placeholders = ','.join(['%s'] * len(group_ids))
+        query = f"""
+            SELECT 
+                id, 
+                first_name, 
+                last_name, 
+                organization_name,
+                email, 
+                phone, 
+                group_id 
+            FROM clients 
+            WHERE group_id IN ({placeholders})
+            ORDER BY group_id, last_name, first_name
+        """
+        
+        results = self.execute_query(query, group_ids)
+        return results if results else []
+    
+    def test_connection(self):
+        """Test database connection"""
+        connection = self.get_connection()
+        if connection:
+            try:
+                cursor = connection.cursor()
+                cursor.execute("SELECT 1")
+                result = cursor.fetchone()
                 cursor.close()
-                conn.close()
+                connection.close()
+                return result is not None
+            except Error:
+                return False
+        return False
 
-
+# Initialize the connection instance
 mysql_conn = MySQLConnection()
+
 
 
 

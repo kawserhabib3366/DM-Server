@@ -2647,6 +2647,7 @@ You use simple, accessible language and reference Biblical sites to create a con
             // Step 1: Create Campaign
             updateProgressStep('Creating campaign...');
             addActivityLog('Creating campaign in database...', 'info');
+            console.log(campaignData)
 
             const createResponse = await fetch(`${API_BASE}/campaigns`, {
                 method: 'POST',

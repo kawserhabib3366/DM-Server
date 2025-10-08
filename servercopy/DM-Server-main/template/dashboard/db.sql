@@ -134,12 +134,27 @@ ON DUPLICATE KEY UPDATE first_name=VALUES(first_name);
 
 
 
-USE campaign_db;
 
-ALTER TABLE campaigns 
-    ADD COLUMN email_attachment_file VARCHAR(500),
-    ADD COLUMN email_attachment_url VARCHAR(500),
-    ADD COLUMN email_attachment_type VARCHAR(10);
+-- For SQLite or PostgreSQL:
+ALTER TABLE campaigns ADD COLUMN email_attachment_file VARCHAR(500);
+ALTER TABLE campaigns ADD COLUMN email_attachment_url VARCHAR(500);
+ALTER TABLE campaigns ADD COLUMN email_attachment_type VARCHAR(10);
+
+
+
+
+
+-- Add the new JSON column
+ALTER TABLE campaigns ADD COLUMN client_group_ids JSON;
+
+-- (Optional) If you want to migrate existing single group_id values:
+UPDATE campaigns
+SET client_group_ids = JSON_ARRAY(client_group_id)
+WHERE client_group_id IS NOT NULL;
+
+-- (Optional) Drop the old column if no longer needed
+ALTER TABLE campaigns DROP COLUMN client_group_id;
+
 
 
 

@@ -341,7 +341,7 @@ You have access to a tool to end the call [end_call function called] .
                     "prompt": {
                         "prompt":system_prompt 
                     },
-                    "first_message": f"Hello, this is {agent_name}, calling on behalf of Good Shepherd Tours. May I please speak with Pastor {username}?",
+                    "first_message": f"Hello, this is {agent_name}, calling on behalf of Good Shepherd Tours. May I please speak with Pastor of {username}?",
                     "language": "en"
                 },
                 "tts": {
